@@ -1,0 +1,310 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Admin Dashboard — Task Manager</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600,700&display=swap" rel="stylesheet">
+  <style>
+    body{font-family:Inter,system-ui;padding:18px;background:#f6f8fb;color:#0b1220}
+    .card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 6px 20px rgba(12,18,30,0.06);margin-bottom:14px}
+    h1{margin:0 0 12px 0}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .col{flex:1;min-width:280px}
+    .center{display:flex;align-items:center;justify-content:center}
+    .hidden{display:none}
+    .muted{color:#6b7280}
+    .controls{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+    .btn{background:#2563eb;color:white;padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+    .btn.ghost{background:transparent;color:#2563eb;border:1px solid rgba(37,99,235,0.12)}
+    #signinBox{max-width:520px;margin:28px auto}
+    label{display:block;margin:6px 0 4px;font-size:14px;color:#374151}
+    input[type="email"],input[type="password"]{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef}
+    .smallmuted{font-size:13px;color:#6b7280;margin-top:8px}
+  </style>
+</head>
+<body>
+  <h1>Admin Dashboard — Task Manager</h1>
+  <div id="authStatus" class="smallmuted">Please sign in with an admin account.</div>
+
+  <!-- Sign-in UI -->
+  <div id="signinBox" class="card">
+    <div id="signedOutUI">
+      <h3>Sign in (Email / Password)</h3>
+      <label for="email">Email</label>
+      <input id="email" type="email" placeholder="admin@domain.com" />
+      <label for="password">Password</label>
+      <input id="password" type="password" placeholder="password" />
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button class="btn" id="signInBtn">Sign in</button>
+        <button class="btn ghost" id="createAccountBtn">Create account</button>
+      </div>
+      <div class="smallmuted" style="margin-top:10px">
+        To make a user an admin: after they sign in, set the Firestore document
+        <code>users/{uid}</code> with field <code>isAdmin</code> = <code>true</code> (Console → Firestore).
+      </div>
+    </div>
+
+    <div id="signedInUI" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <strong id="userEmail"></strong>
+          <div class="muted" id="userUid" style="font-size:13px"></div>
+        </div>
+        <div>
+          <button class="btn ghost" id="signOutBtn">Sign out</button>
+        </div>
+      </div>
+      <div style="margin-top:12px" id="adminNotice" class="muted"></div>
+    </div>
+  </div>
+
+  <!-- Access denied -->
+  <div id="accessDenied" class="card hidden">
+    <h3>Access denied</h3>
+    <p class="muted">You are signed in but you don't have admin privileges. Ask the project owner to set <code>users/{uid}.isAdmin = true</code> in Firestore for your account.</p>
+    <p class="muted">UID: <span id="deniedUid"></span></p>
+    <p class="muted">Go to: Firebase Console → Firestore → Start collection → users → New document → ID = your UID → field <code>isAdmin</code> = true</p>
+  </div>
+
+  <!-- Dashboard (visible only to admins) -->
+  <div id="dashboard" class="hidden">
+    <div class="controls">
+      <div class="muted" id="lastRefresh">Last refresh: -</div>
+      <div style="flex:1"></div>
+      <button id="refreshBtn" class="btn ghost">Refresh</button>
+    </div>
+
+    <div class="row">
+      <div class="col card">
+        <h3>Tasks per day (last 14 days)</h3>
+        <canvas id="chartDays"></canvas>
+      </div>
+      <div class="col card">
+        <h3>Tasks by employee</h3>
+        <canvas id="chartEmployees"></canvas>
+      </div>
+      <div class="col card">
+        <h3>Status distribution</h3>
+        <canvas id="chartStatus"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase modular SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, orderBy, Timestamp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+
+    // ===== PASTE YOUR FIREBASE CONFIG HERE (same as index.html) =====
+    const firebaseConfig = {
+    apiKey: "AIzaSyAeFHwPjA2oS5m7Y5vU7VR8-rE4YOIlSdg",
+    authDomain: "taskmanager-bot.firebaseapp.com",
+    projectId: "taskmanager-bot",
+    storageBucket: "taskmanager-bot.firebasestorage.app",
+    messagingSenderId: "504791278240",
+    appId: "1:504791278240:web:0cdf192e4416e45f27dfc5",
+    measurementId: "G-EF8XPZ8C55"
+  };
+    // =================================================================
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // DOM helpers
+    const $ = s => document.querySelector(s);
+    const show = (sel) => { $(sel).classList.remove('hidden'); };
+    const hide = (sel) => { $(sel).classList.add('hidden'); };
+
+    // UI elements
+    const signInBtn = $('#signInBtn'), createAccountBtn = $('#createAccountBtn'), signOutBtn = $('#signOutBtn');
+    const emailInput = $('#email'), pwdInput = $('#password');
+    const signedOutUI = $('#signedOutUI'), signedInUI = $('#signedInUI');
+    const signedEmail = $('#userEmail'), signedUid = $('#userUid');
+    const accessDenied = $('#accessDenied'), deniedUid = $('#deniedUid');
+    const dashboard = $('#dashboard'), adminNotice = $('#adminNotice'), lastRefresh = $('#lastRefresh');
+    const refreshBtn = $('#refreshBtn');
+
+    // Charts
+    let chartDays = null, chartEmployees = null, chartStatus = null;
+
+    // Auth actions
+    signInBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim(), pwd = pwdInput.value;
+      if(!email || !pwd) return alert('Enter email & password');
+      try {
+        await signInWithEmailAndPassword(auth, email, pwd);
+      } catch (e) { alert('Sign-in failed: ' + e.message); }
+    });
+
+    createAccountBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim(), pwd = pwdInput.value;
+      if(!email || !pwd) return alert('Enter email & password to create');
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, pwd);
+        // create a minimal users doc for them (not admin by default)
+        const uid = cred.user.uid;
+        await setDoc(doc(db, 'users', uid), { email, isAdmin: false, createdAt: Timestamp.now() });
+        alert('Account created. Ask project owner to set isAdmin=true in Firestore for your UID if you should be admin.');
+      } catch (e) { alert('Create account failed: ' + e.message); }
+    });
+
+    signOutBtn.addEventListener('click', async ()=> {
+      await signOut(auth);
+    });
+
+    // on auth state change: check admin flag
+    onAuthStateChanged(auth, async (user) => {
+      if(user){
+        // show signed in UI
+        hide('#signinBox #signedOutUI');
+        show('#signinBox #signedInUI');
+        signedEmail.textContent = user.email || 'No email';
+        signedUid.textContent = user.uid;
+        // check users/{uid} doc
+        const udocRef = doc(db, 'users', user.uid);
+        const udoc = await getDoc(udocRef);
+        if(!udoc.exists()){
+          // create a default record (non-admin)
+          await setDoc(udocRef, { email: user.email || null, isAdmin: false, createdAt: Timestamp.now() });
+        }
+        const data = (await getDoc(udocRef)).data();
+        if(data && data.isAdmin === true){
+          // admin -> show dashboard
+          hide('#signinBox');
+          hide('#accessDenied');
+          show('#dashboard');
+          adminNotice.textContent = 'Signed in as admin';
+          startDashboard(); // load charts/listeners
+        } else {
+          // not admin
+          hide('#dashboard');
+          hide('#signinBox #signedOutUI');
+          show('#signinBox #signedInUI');
+          show('#accessDenied');
+          deniedUid.textContent = user.uid;
+        }
+      } else {
+        // signed out
+        hide('#dashboard');
+        hide('#accessDenied');
+        show('#signinBox');
+        show('#signinBox #signedOutUI');
+        hide('#signinBox #signedInUI');
+        signedEmail.textContent = '';
+        signedUid.textContent = '';
+      }
+    });
+
+    /* ----------------- Dashboard logic ----------------- */
+    refreshBtn.addEventListener('click', () => { refreshCharts(); });
+
+    async function startDashboard(){
+      // initial draw
+      await refreshCharts();
+      lastRefresh.textContent = 'Last refresh: ' + new Date().toLocaleString();
+    }
+
+    async function refreshCharts(){
+      // tasks per day (14 days)
+      const days = await tasksPerDay(14);
+      renderBarChart('chartDays', days.labels, days.data, chartDays, (c)=>chartDays=c);
+
+      // tasks per employee
+      const emp = await tasksPerEmployee();
+      renderBarChartHorizontal('chartEmployees', emp.labels, emp.data, chartEmployees, (c)=>chartEmployees=c);
+
+      // status distribution
+      const st = await statusDistribution();
+      renderDoughnut('chartStatus', st.labels, st.data, chartStatus, (c)=>chartStatus=c);
+
+      lastRefresh.textContent = 'Last refresh: ' + new Date().toLocaleString();
+    }
+
+    // Query helpers
+    async function tasksPerDay(days=14){
+      const since = new Date(); since.setDate(since.getDate() - (days-1));
+      // Firestore lacks server-side date arithmetic in client SDK; we'll fetch tasks and group client-side
+      const snap = await getDocs(query(collection(db, 'tasks'), orderBy('createdAt', 'desc')));
+      const counts = {};
+      snap.forEach(d=>{
+        const data = d.data();
+        if(!data.createdAt) return;
+        const day = data.createdAt.toDate().toISOString().slice(0,10);
+        counts[day] = (counts[day]||0) + 1;
+      });
+      const labels = [], data = [];
+      for(let i=days-1;i>=0;i--){
+        const dd = new Date(); dd.setDate(dd.getDate()-i);
+        const k = dd.toISOString().slice(0,10);
+        labels.push(k);
+        data.push(counts[k]||0);
+      }
+      return { labels, data };
+    }
+
+    async function tasksPerEmployee(){
+      const empsSnap = await getDocs(query(collection(db, 'employees'), orderBy('name')));
+      const emps = empsSnap.docs.map(d=>({ id:d.id, name:d.data().name }));
+      const counts = {};
+      const tasksSnap = await getDocs(collection(db, 'tasks'));
+      tasksSnap.forEach(d=>{
+        const a = d.data().assignedId || 'unassigned';
+        counts[a] = (counts[a]||0) + 1;
+      });
+      const labels = emps.map(e=>e.name);
+      const data = emps.map(e=>counts[e.id]||0);
+      if(counts['unassigned']){ labels.push('Unassigned'); data.push(counts['unassigned']); }
+      return { labels, data };
+    }
+
+    async function statusDistribution(){
+      const snap = await getDocs(collection(db, 'tasks'));
+      const counts = {};
+      snap.forEach(d=>{
+        const s = d.data().status || 'Open';
+        counts[s] = (counts[s]||0) + 1;
+      });
+      const labels = Object.keys(counts);
+      const data = labels.map(l=>counts[l]);
+      return { labels, data };
+    }
+
+    // Chart helpers (Chart.js)
+    function renderBarChart(canvasId, labels, data, chartVar, setChartVar){
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      if(chartVar) chartVar.destroy();
+      const c = new Chart(ctx, { type:'bar', data:{ labels, datasets:[{ label:'Tasks', data }] }, options:{ responsive:true }});
+      setChartVar(c);
+    }
+    function renderBarChartHorizontal(canvasId, labels, data, chartVar, setChartVar){
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      if(chartVar) chartVar.destroy();
+      const c = new Chart(ctx, { type:'bar', data:{ labels, datasets:[{ label:'Tasks', data }] }, options:{ indexAxis:'y', responsive:true }});
+      setChartVar(c);
+    }
+    function renderDoughnut(canvasId, labels, data, chartVar, setChartVar){
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      if(chartVar) chartVar.destroy();
+      const c = new Chart(ctx, { type:'doughnut', data:{ labels, datasets:[{ data }] }, options:{ responsive:true }});
+      setChartVar(c);
+    }
+
+    /* ----------------- Helpful notes for the owner -----------------
+      To grant admin rights to a user:
+      1) Go to Firebase Console → Firestore → Start collection → users
+      2) Create a document with ID = the user's UID (copy from the "Access denied" box)
+      3) Add field: isAdmin (boolean) = true
+      4) Optionally add field: email = user email
+      The next time the user signs in, they'll be detected as admin and see the dashboard.
+    --------------------------------------------------------------- */
+
+    // Small helper to avoid linter complaints about unused imports in some browsers
+    window.__admin_debug = { db, auth };
+
+  </script>
+</body>
+</html>
