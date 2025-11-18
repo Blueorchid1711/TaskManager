@@ -40,18 +40,24 @@ tbody td{padding:12px 10px;border-bottom:1px solid #f3f6f9;vertical-align:middle
 .badge.closed{background:var(--red)}
 .badge.waiting{background:#60a5fa}
 
+/* attachments */
+.attachments-list{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px}
+.attach-pill{display:flex;align-items:center;gap:8px;background:#f3f6fa;border:1px solid #e7eefb;padding:6px 8px;border-radius:8px;font-size:13px}
+.attach-pill a{color:#0b5cf6;text-decoration:none}
+.attach-remove{background:transparent;border:none;color:#d04b4b;cursor:pointer;padding:4px}
+
 /* actions */
 .actions button{border:1px solid #e6e9ef;background:#fff;padding:6px 8px;border-radius:8px;cursor:pointer;margin-left:6px}
 
 /* modal */
 .modal-back{position:fixed;inset:0;background:rgba(3,7,18,0.48);display:none;align-items:center;justify-content:center;z-index:60;padding:20px}
-.modal{background:var(--card);width:720px;max-width:100%;border-radius:12px;padding:22px;box-shadow:0 16px 40px rgba(8,17,30,0.16);overflow:auto}
+.modal{background:var(--card);width:760px;max-width:100%;border-radius:12px;padding:22px;box-shadow:0 16px 40px rgba(8,17,30,0.16);overflow:auto}
 
 /* modal typography & layout */
 .modal h3{margin:0 0 12px 0;font-size:20px;font-weight:700}
 .field{margin-bottom:12px}
 .field label{display:block;margin-bottom:6px;color:var(--muted);font-size:13px}
-input[type="text"], textarea, select, input[type="date"]{width:100%}
+input[type="text"], textarea, select, input[type="date"], input[type="url"]{width:100%}
 textarea{min-height:100px;resize:vertical;border-radius:10px;padding:10px}
 
 /* row with 3 columns */
@@ -59,6 +65,11 @@ textarea{min-height:100px;resize:vertical;border-radius:10px;padding:10px}
 .inline-add{display:flex;gap:8px;align-items:center}
 .inline-add input{flex:1;padding:8px;border-radius:8px}
 .inline-add select{min-width:160px;padding:8px;border-radius:8px}
+
+/* upload UI */
+.upload-row{display:flex;gap:10px;align-items:center}
+.link-add{display:flex;gap:8px;flex:1}
+.link-add input{padding:8px;border-radius:8px;border:1px solid #e6e9ef}
 
 /* modal actions */
 .modal-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:8px}
@@ -68,6 +79,7 @@ textarea{min-height:100px;resize:vertical;border-radius:10px;padding:10px}
   .row-3{grid-template-columns:1fr;align-items:start}
   .inline-add{flex-direction:column;align-items:stretch}
   .inline-add button{width:100%}
+  .upload-row{flex-direction:column;align-items:stretch}
 }
 
 /* small polish */
