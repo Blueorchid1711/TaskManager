@@ -1,4 +1,9 @@
-/* ---------------- Data Storage ---------------- */
+/* ---------------- script.js (fixed) ----------------
+   Replaces the previous script.js. Fixes add-person flow so
+   newly added names are persisted to localStorage and shown
+   immediately in both assign dropdown and assigned filter.
+---------------------------------------------------*/
+
 const STORAGE_KEY = "task_manager_tasks";
 const EMP_KEY = "task_manager_employees";
 
@@ -15,10 +20,11 @@ const els = (s) => Array.from(document.querySelectorAll(s));
 
 function uuid(prefix='id') { return prefix + '-' + Math.random().toString(36).slice(2,9); }
 
-/* employees CRUD in localStorage */
+/* ---------------- Employees CRUD (localStorage) ---------------- */
 function getEmployees(){
   const raw = localStorage.getItem(EMP_KEY);
   if(!raw) {
+    // seed initial employees (only once)
     localStorage.setItem(EMP_KEY, JSON.stringify(starterEmployees));
     return starterEmployees.slice();
   }
@@ -29,24 +35,31 @@ function saveEmployees(list){
   localStorage.setItem(EMP_KEY, JSON.stringify(list));
 }
 
+/* addEmployee returns the created employee object on success, or null on failure (duplicate/invalid) */
 function addEmployee(name){
-  name = name.trim();
   if(!name) return null;
+  const nm = String(name).trim();
+  if(!nm) return null;
+
   const list = getEmployees();
-  // avoid duplicates by exact name
-  if(list.find(e => e.name.toLowerCase() === name.toLowerCase())) return null;
-  const newEmp = { id: uuid('emp'), name };
+
+  // case-insensitive duplicate check
+  const exists = list.some(e => e.name.trim().toLowerCase() === nm.toLowerCase());
+  if(exists) return null;
+
+  const newEmp = { id: uuid('emp'), name: nm };
   list.push(newEmp);
   saveEmployees(list);
+  // update selects immediately
   populateEmployeeSelects();
   return newEmp;
 }
 
-/* tasks */
+/* ---------------- Tasks storage ---------------- */
 function getTasks(){ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
 function saveTasks(list){ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
 
-/* helper */
+/* ---------------- Helpers ---------------- */
 function formatDate(iso){ if(!iso) return '-'; const d = new Date(iso); if(isNaN(d)) return iso; return d.toLocaleDateString(); }
 function badgeClass(status){
   if(status === 'Open') return 'badge open';
@@ -62,19 +75,25 @@ function populateEmployeeSelects(){
   const assignTo = el('#assignTo');
   const assignedFilter = el('#assignedFilter');
 
+  // clear existing options
   assignTo.innerHTML = '';
   assignedFilter.innerHTML = '<option value="">All assignees</option>';
 
+  // populate new options
   emps.forEach(e=>{
-    const opt = document.createElement('option'); opt.value = e.id; opt.textContent = e.name;
+    const opt = document.createElement('option');
+    opt.value = e.id;
+    opt.textContent = e.name;
     assignTo.appendChild(opt);
 
-    const opt2 = opt.cloneNode(true);
+    const opt2 = document.createElement('option');
+    opt2.value = e.id;
+    opt2.textContent = e.name;
     assignedFilter.appendChild(opt2);
   });
 }
 
-/* seed sample tasks first-run (optional) */
+/* ---------------- Optional seed tasks (first-run) ---------------- */
 function seedTasksOnce(){
   const t = getTasks();
   if(t.length) return;
@@ -103,7 +122,7 @@ function seedTasksOnce(){
   saveTasks(tasks);
 }
 
-/* render tasks table based on filters */
+/* ---------------- Render Tasks ---------------- */
 function renderTasks(){
   const tasks = getTasks().slice().sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
   const q = el('#searchInput').value.trim().toLowerCase();
@@ -130,13 +149,13 @@ function renderTasks(){
   const html = visible.map(t=>`
     <tr data-id="${t.id}">
       <td>
-        <div class="title">${t.title}</div>
-        <div class="muted" style="margin-top:6px">${t.details ? (t.details.length>160 ? t.details.slice(0,160)+'…' : t.details) : ''}</div>
+        <div class="title">${escapeHtml(t.title)}</div>
+        <div class="muted" style="margin-top:6px">${t.details ? (escapeHtml(t.details.length>160 ? t.details.slice(0,160)+'…' : t.details)) : ''}</div>
       </td>
-      <td>${t.assignedName}</td>
+      <td>${escapeHtml(t.assignedName)}</td>
       <td class="muted">${formatDate(t.createdAt)}</td>
       <td class="muted">${formatDate(t.deadline)}</td>
-      <td><span class="${badgeClass(t.status)}">${t.status}</span></td>
+      <td><span class="${badgeClass(t.status)}">${escapeHtml(t.status)}</span></td>
       <td style="text-align:right" class="actions">
         <button data-action="edit">Edit</button>
         <button data-action="delete">Delete</button>
@@ -158,7 +177,18 @@ function renderTasks(){
   });
 }
 
-/* ---------------- CRUD for tasks ---------------- */
+/* safe text escape to avoid accidental html injection when rendering */
+function escapeHtml(str){
+  if(!str) return '';
+  return String(str)
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+/* ---------------- Task CRUD ---------------- */
 function addTask(task){
   const tasks = getTasks(); tasks.push(task); saveTasks(tasks); renderTasks();
 }
@@ -184,14 +214,30 @@ addTaskBtn.addEventListener('click', ()=> openAddModal());
 cancelModal.addEventListener('click', closeModal);
 modalBack.addEventListener('click', (e)=> { if(e.target === modalBack) closeModal(); });
 
+/* Add assignee button handler: uses addEmployee and handles feedback */
 addAssigneeBtn.addEventListener('click', ()=>{
-  const name = newAssigneeInput.value.trim();
-  if(!name) return alert('Enter a name to add');
+  const name = (newAssigneeInput.value || '').trim();
+  if(!name) {
+    alert('Enter a name to add');
+    return;
+  }
   const added = addEmployee(name);
-  if(!added) { alert('Name already exists or invalid'); return; }
+  if(!added){
+    alert('Name already exists or is invalid');
+    return;
+  }
+  // clear input and select newly added person
   newAssigneeInput.value = '';
-  // select the newly added person
-  el('#assignTo').value = added.id;
+  // select in assignTo dropdown
+  const assignTo = el('#assignTo');
+  if(assignTo){
+    assignTo.value = added.id;
+  }
+  // also select in assignedFilter for convenience
+  const assignedFilter = el('#assignedFilter');
+  if(assignedFilter){
+    assignedFilter.value = added.id;
+  }
 });
 
 function openAddModal(){
@@ -223,9 +269,9 @@ function showModal(){ modalBack.style.display = 'flex'; }
 function closeModal(){ modalBack.style.display = 'none'; editingId = null; }
 
 saveTaskBtn.addEventListener('click', ()=>{
-  const title = el('#taskTitle').value.trim();
+  const title = (el('#taskTitle').value || '').trim();
   if(!title) return alert('Title is required');
-  const details = el('#taskDetails').value.trim();
+  const details = (el('#taskDetails').value || '').trim();
   const assignedId = el('#assignTo').value;
   const emp = getEmployees().find(e=>e.id === assignedId);
   const assignedName = emp ? emp.name : '';
@@ -253,7 +299,8 @@ saveTaskBtn.addEventListener('click', ()=>{
 
 /* ---------------- Filters & export ---------------- */
 ['#searchInput','#statusFilter','#dateFilter','#assignedFilter'].forEach(sel=>{
-  el(sel).addEventListener('input', renderTasks);
+  const node = el(sel);
+  if(node) node.addEventListener('input', renderTasks);
 });
 
 el('#exportBtn').addEventListener('click', ()=>{
@@ -272,4 +319,3 @@ el('#exportBtn').addEventListener('click', ()=>{
   seedTasksOnce();
   renderTasks();
 })();
-
