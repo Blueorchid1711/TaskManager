@@ -1,56 +1,18 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Daily Tasks — Simple Task Manager</title>
-<style>
-  :root{
-    --bg:#f7f9fb; --card:#fff; --muted:#6b7280; --accent:#3b82f6;
-    --green:#10b981; --red:#ef4444; --yellow:#f59e0b; --teal:#14b8a6;
-    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  }
-  body{background:var(--bg); margin:0; color:#111;}
-  .wrap{max-width:1200px; margin:28px auto; padding:20px;}
-  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
-  h1{font-size:20px;margin:0;}
-  .controls{display:flex;gap:8px;align-items:center;}
-  .btn{background:var(--accent);color:#fff;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;}
-  .btn.ghost{background:transparent;color:var(--accent);border:1px solid rgba(59,130,246,0.15)}
-  .panel{background:var(--card);padding:18px;border-radius:10px;box-shadow:0 6px 20px rgba(15,23,42,0.06);}
-  .filters{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
-  input[type="text"], select, input[type="date"]{
-    padding:8px 10px;border-radius:8px;border:1px solid #e6e9ee;background:#fff;min-width:160px;
-  }
-  table{width:100%;border-collapse:collapse;font-size:14px;}
-  thead th{text-align:left;padding:12px 10px;color:var(--muted);font-weight:600;border-bottom:1px solid #eef2f6;}
-  tbody td{padding:12px 10px;border-bottom:1px solid #f1f4f8;vertical-align:middle;}
-  .title-link{color:#2563eb;text-decoration:none;}
-  .badge{display:inline-block;padding:6px 8px;border-radius:8px;font-weight:600;color:#fff;font-size:12px}
-  .badge.open{background:var(--teal)}
-  .badge.closed{background:var(--red)}
-  .badge.inprogress{background:var(--green)}
-  .badge.waiting{background:#60a5fa}
-  .actions button{margin-right:6px;padding:6px 8px;border-radius:8px;border:1px solid #e6e9ee;background:#fff;cursor:pointer}
-  .muted{color:var(--muted);font-size:13px}
-  /* modal */
-  .modal-back{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:none;align-items:center;justify-content:center;z-index:50}
-  .modal{background:var(--card);padding:18px;border-radius:10px;width:520px;max-width:94%}
-  .row{display:flex;gap:10px}
-  .col{flex:1}
-  label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
-  textarea{width:100%;min-height:84px;padding:8px;border-radius:8px;border:1px solid #e6e9ee}
-  footer.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
-  .small{font-size:13px;color:var(--muted)}
-  @media (max-width:720px){
-    thead th:nth-child(3), tbody td:nth-child(3){display:none}
-  }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Task Manager</title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
 <div class="wrap">
   <header>
-    <h1>Tasks assigned — Daily</h1>
+    <h1>Tasks Assigned — Daily</h1>
     <div class="controls">
       <button class="btn" id="addTaskBtn">+ Add Task</button>
       <button class="btn ghost" id="exportBtn">Export CSV</button>
@@ -60,6 +22,7 @@
   <div class="panel">
     <div class="filters">
       <input type="text" id="searchInput" placeholder="Search tasks or employee..." />
+
       <select id="statusFilter">
         <option value="">All status</option>
         <option value="Open">Open</option>
@@ -67,24 +30,27 @@
         <option value="Waiting client">Waiting client</option>
         <option value="Closed">Closed</option>
       </select>
-      <input type="date" id="dateFilter" />
+
+      <input type="date" id="dateFilter">
+
       <select id="assignedFilter">
         <option value="">All assignees</option>
       </select>
-      <div style="flex:1"></div>
+
+      <div style="flex: 1;"></div>
       <div class="small muted" id="countLabel">0 tasks</div>
     </div>
 
-    <div style="overflow:auto">
-      <table id="tasksTable" >
+    <div class="table-scroll">
+      <table id="tasksTable">
         <thead>
           <tr>
-            <th style="width:36%">TASK</th>
+            <th>TASK</th>
             <th>ASSIGNED</th>
             <th>CREATED AT</th>
             <th>DEADLINE</th>
             <th>STATUS</th>
-            <th style="width:120px;text-align:right">ACTIONS</th>
+            <th>ACTIONS</th>
           </tr>
         </thead>
         <tbody id="tasksBody"></tbody>
@@ -95,324 +61,37 @@
 
 <!-- Modal -->
 <div class="modal-back" id="modalBack">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
     <h3 id="modalTitle">Add Task</h3>
-    <div style="margin-top:8px">
-      <label>Task title</label>
-      <input id="taskTitle" type="text" placeholder="Short description" />
-    </div>
-    <div style="margin-top:10px">
-      <label>Details</label>
-      <textarea id="taskDetails" placeholder="More info (optional)"></textarea>
-    </div>
-    <div style="margin-top:10px" class="row">
-      <div class="col">
-        <label>Assigned to</label>
-        <select id="assignTo"></select>
-      </div>
-      <div style="width:150px">
-        <label>Deadline</label>
-        <input id="deadline" type="date" />
-      </div>
-      <div style="width:130px">
-        <label>Status</label>
-        <select id="statusSelect">
-          <option>Open</option>
-          <option>In-progress</option>
-          <option>Waiting client</option>
-          <option>Closed</option>
-        </select>
-      </div>
-    </div>
 
-    <footer class="modal-actions">
+    <label>Task Title</label>
+    <input id="taskTitle" type="text">
+
+    <label>Details</label>
+    <textarea id="taskDetails"></textarea>
+
+    <label>Assigned To</label>
+    <select id="assignTo"></select>
+
+    <label>Deadline</label>
+    <input type="date" id="deadline">
+
+    <label>Status</label>
+    <select id="statusSelect">
+      <option>Open</option>
+      <option>In-progress</option>
+      <option>Waiting client</option>
+      <option>Closed</option>
+    </select>
+
+    <div class="modal-actions">
       <button class="btn ghost" id="cancelModal">Cancel</button>
       <button class="btn" id="saveTaskBtn">Save</button>
-    </footer>
+    </div>
   </div>
 </div>
 
-<script>
-/* ---------- Simple in-browser Task Manager (localStorage) ---------- */
-/* Data models:
-   employee: {id, name}
-   task: {id, title, details, assignedId, assignedName, createdAtISO, deadlineISO, status}
-*/
-
-const STORAGE_KEY = 'taskbot_tasks_v1';
-const EMP_KEY = 'taskbot_employees_v1';
-
-const sampleEmployees = [
-  {id: 'emp-1', name: "James O'Brian"},
-  {id: 'emp-2', name: "Adam Baker"},
-  {id: 'emp-3', name: "Priya Sharma"},
-  {id: 'emp-4', name: "Mina Patel"}
-];
-
-const el = selector => document.querySelector(selector);
-const els = selector => Array.from(document.querySelectorAll(selector));
-
-function uuid(prefix='id'){ return prefix+'-'+Math.random().toString(36).slice(2,9) }
-
-function readEmployees(){
-  const raw = localStorage.getItem(EMP_KEY);
-  if(!raw){
-    localStorage.setItem(EMP_KEY, JSON.stringify(sampleEmployees));
-    return sampleEmployees;
-  }
-  return JSON.parse(raw);
-}
-
-function writeEmployees(list){ localStorage.setItem(EMP_KEY, JSON.stringify(list)) }
-
-function readTasks(){
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if(!raw) return [];
-  try{ return JSON.parse(raw) } catch(e){ return [] }
-}
-function writeTasks(tasks){ localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)) }
-
-function formatDate(iso){
-  if(!iso) return '-';
-  const d = new Date(iso);
-  if (isNaN(d)) return iso;
-  return d.toLocaleDateString();
-}
-
-function badgeClass(status){
-  switch(status){
-    case 'Closed': return 'badge closed';
-    case 'Open': return 'badge open';
-    case 'In-progress': return 'badge inprogress';
-    case 'Waiting client': return 'badge waiting';
-    default: return 'badge';
-  }
-}
-
-/* UI wiring */
-const tasksBody = el('#tasksBody');
-const countLabel = el('#countLabel');
-const assignSelect = el('#assignTo');
-const assignedFilter = el('#assignedFilter');
-
-function populateAssignees(){
-  const emps = readEmployees();
-  assignSelect.innerHTML = '';
-  assignedFilter.innerHTML = '<option value="">All assignees</option>';
-  emps.forEach(e=>{
-    assignSelect.innerHTML += `<option value="${e.id}">${e.name}</option>`;
-    assignedFilter.innerHTML += `<option value="${e.id}">${e.name}</option>`;
-  });
-}
-
-/* Seed sample tasks on first run */
-function seedTasksIfEmpty(){
-  const t = readTasks();
-  if(t.length) return;
-  const emps = readEmployees();
-  const now = new Date();
-  const sample = [
-    {title:'Add social media links to web design', assignee:emps[0], deadlineOffset:3, status:'Closed'},
-    {title:'Database not set up correctly', assignee:emps[1], deadlineOffset:4, status:'Open'},
-    {title:'Client newest web design', assignee:emps[0], deadlineOffset:3, status:'Waiting client'},
-    {title:'Design new business card', assignee:emps[1], deadlineOffset:5, status:'In-progress'},
-    {title:'Create new social media banner', assignee:emps[1], deadlineOffset:7, status:'Open'},
-    {title:'Fix colors with client', assignee:emps[1], deadlineOffset:3, status:'Closed'},
-    {title:'Website design missing logo', assignee:emps[0], deadlineOffset:6, status:'In-progress'}
-  ];
-  const tasks = sample.map(s => {
-    const created = new Date(now.getTime() - Math.random()*5*24*3600*1000);
-    const dl = new Date(created.getTime() + s.deadlineOffset*24*3600*1000);
-    return {
-      id: uuid('task'),
-      title: s.title,
-      details: '',
-      assignedId: s.assignee.id,
-      assignedName: s.assignee.name,
-      createdAt: created.toISOString(),
-      deadline: dl.toISOString(),
-      status: s.status
-    };
-  });
-  writeTasks(tasks);
-}
-
-/* Render tasks according to filters */
-function renderTasks(){
-  const tasks = readTasks().slice().sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
-  const q = el('#searchInput').value.trim().toLowerCase();
-  const status = el('#statusFilter').value;
-  const date = el('#dateFilter').value; // YYYY-MM-DD
-  const assigned = el('#assignedFilter').value;
-
-  let visible = tasks.filter(t=>{
-    if(status && t.status !== status) return false;
-    if(assigned && t.assignedId !== assigned) return false;
-    if(date){
-      const tdate = (new Date(t.createdAt)).toISOString().slice(0,10);
-      if(tdate !== date) return false;
-    }
-    if(q){
-      const hay = (t.title+' '+(t.details||'')+' '+t.assignedName).toLowerCase();
-      if(!hay.includes(q)) return false;
-    }
-    return true;
-  });
-
-  tasksBody.innerHTML = visible.map(t=>`
-    <tr data-id="${t.id}">
-      <td>
-        <div><a class="title-link">${t.title}</a></div>
-        <div class="small muted">${t.details ? (t.details.length>120 ? t.details.slice(0,120)+'…' : t.details) : ''}</div>
-      </td>
-      <td>${t.assignedName}</td>
-      <td class="muted">${formatDate(t.createdAt)}</td>
-      <td class="muted">${formatDate(t.deadline)}</td>
-      <td><span class="${badgeClass(t.status)}">${t.status}</span></td>
-      <td style="text-align:right" class="actions">
-        <button data-action="edit">Edit</button>
-        <button data-action="delete">Delete</button>
-      </td>
-    </tr>
-  `).join('') || `<tr><td colspan="6" class="muted">No tasks found.</td></tr>`;
-
-  countLabel.textContent = visible.length + ' tasks';
-  // attach handlers
-  els('#tasksBody button').forEach(btn=>{
-    btn.addEventListener('click', (ev)=>{
-      const tr = ev.target.closest('tr');
-      const id = tr.dataset.id;
-      const action = ev.target.dataset.action;
-      if(action === 'edit') openEditModal(id);
-      if(action === 'delete') { if(confirm('Delete this task?')) { deleteTask(id) } }
-    })
-  });
-}
-
-/* CRUD */
-function addTask(task){
-  const list = readTasks();
-  list.push(task);
-  writeTasks(list);
-  renderTasks();
-}
-
-function updateTask(updated){
-  const list = readTasks();
-  const idx = list.findIndex(t=>t.id===updated.id);
-  if(idx===-1) return;
-  list[idx] = updated;
-  writeTasks(list);
-  renderTasks();
-}
-
-function deleteTask(id){
-  const list = readTasks().filter(t=>t.id!==id);
-  writeTasks(list);
-  renderTasks();
-}
-
-/* Modal controls */
-const modalBack = el('#modalBack');
-const addBtn = el('#addTaskBtn');
-const saveBtn = el('#saveTaskBtn');
-const cancelBtn = el('#cancelModal');
-
-let editingId = null;
-
-addBtn.addEventListener('click', ()=>openAddModal());
-cancelBtn.addEventListener('click', closeModal);
-modalBack.addEventListener('click', (e)=>{ if(e.target===modalBack) closeModal(); });
-
-function openAddModal(){
-  editingId = null;
-  el('#modalTitle').textContent = 'Add Task';
-  el('#taskTitle').value = '';
-  el('#taskDetails').value = '';
-  el('#statusSelect').value = 'Open';
-  el('#deadline').value = '';
-  el('#assignTo').selectedIndex = 0;
-  showModal();
-}
-
-function openEditModal(id){
-  const t = readTasks().find(x=>x.id===id);
-  if(!t) return alert('Task not found');
-  editingId = id;
-  el('#modalTitle').textContent = 'Edit Task';
-  el('#taskTitle').value = t.title;
-  el('#taskDetails').value = t.details || '';
-  el('#statusSelect').value = t.status || 'Open';
-  el('#deadline').value = t.deadline ? new Date(t.deadline).toISOString().slice(0,10) : '';
-  el('#assignTo').value = t.assignedId;
-  showModal();
-}
-
-function showModal(){ modalBack.style.display = 'flex'; }
-function closeModal(){ modalBack.style.display = 'none'; editingId = null; }
-
-saveBtn.addEventListener('click', ()=>{
-  const title = el('#taskTitle').value.trim();
-  if(!title) return alert('Task title required');
-  const details = el('#taskDetails').value.trim();
-  const assignedId = el('#assignTo').value;
-  const assignedName = readEmployees().find(e=>e.id===assignedId)?.name || '';
-  const deadlineVal = el('#deadline').value ? new Date(el('#deadline').value).toISOString() : '';
-  const status = el('#statusSelect').value;
-
-  if(editingId){
-    const task = readTasks().find(t=>t.id===editingId);
-    if(!task) return alert('Task not found');
-    task.title = title; task.details = details; task.assignedId = assignedId;
-    task.assignedName = assignedName; task.deadline = deadlineVal; task.status = status;
-    updateTask(task);
-  } else {
-    const newTask = {
-      id: uuid('task'),
-      title, details,
-      assignedId, assignedName,
-      createdAt: new Date().toISOString(),
-      deadline: deadlineVal,
-      status
-    };
-    addTask(newTask);
-  }
-  closeModal();
-});
-
-/* Filters */
-el('#searchInput').addEventListener('input', renderTasks);
-el('#statusFilter').addEventListener('change', renderTasks);
-el('#dateFilter').addEventListener('change', renderTasks);
-el('#assignedFilter').addEventListener('change', renderTasks);
-
-/* Export CSV for visible rows */
-el('#exportBtn').addEventListener('click', ()=>{
-  const rows = Array.from(document.querySelectorAll('#tasksBody tr')).filter(r=>r.dataset.id);
-  if(!rows.length) return alert('No tasks to export');
-  const header = ['Title','Details','Assigned','Created At','Deadline','Status'];
-  const data = [header];
-  rows.forEach(r=>{
-    const id = r.dataset.id;
-    const t = readTasks().find(x=>x.id===id);
-    if(!t) return;
-    data.push([t.title, t.details||'', t.assignedName, formatDate(t.createdAt), formatDate(t.deadline), t.status]);
-  });
-  const csv = data.map(r=>r.map(cell=>`"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob([csv], {type:'text/csv'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'tasks-export.csv'; a.click();
-  URL.revokeObjectURL(url);
-});
-
-/* Init */
-(function init(){
-  readEmployees(); // create employees if needed
-  populateAssignees();
-  seedTasksIfEmpty();
-  renderTasks();
-})();
-</script>
+<!-- JS -->
+<script src="script.js"></script>
 </body>
 </html>
