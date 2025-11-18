@@ -1,1 +1,163 @@
 
+:root {
+  --bg: #f7f9fb;
+  --card: #fff;
+  --muted: #6b7280;
+  --accent: #3b82f6;
+  --green: #10b981;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --teal: #14b8a6;
+  font-family: Inter, system-ui, "Segoe UI", Arial;
+}
+
+body {
+  background: var(--bg);
+  margin: 0;
+  color: #111;
+}
+
+.wrap {
+  max-width: 1200px;
+  margin: 30px auto;
+  padding: 20px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.btn {
+  background: var(--accent);
+  color: #fff;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn.ghost {
+  background: transparent;
+  border: 1px solid #d0d7e2;
+  color: var(--accent);
+}
+
+.panel {
+  background: var(--card);
+  padding: 20px;
+  margin-top: 20px;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+input[type="text"],
+input[type="date"],
+select,
+textarea {
+  border: 1px solid #d0d7e2;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+textarea {
+  height: 80px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead th {
+  color: var(--muted);
+  text-align: left;
+  padding: 12px;
+  font-size: 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+tbody td {
+  padding: 12px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 14px;
+}
+
+.badge {
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge.open {
+  background: var(--teal);
+}
+
+.badge.inprogress {
+  background: var(--green);
+}
+
+.badge.closed {
+  background: var(--red);
+}
+
+.badge.waiting {
+  background: #60a5fa;
+}
+
+.actions button {
+  border: 1px solid #d0d7e2;
+  background: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Modal */
+.modal-back {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: none;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal {
+  background: var(--card);
+  padding: 20px;
+  width: 420px;
+  border-radius: 12px;
+}
+
+.modal-actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
