@@ -2,248 +2,274 @@
 const STORAGE_KEY = "task_manager_tasks";
 const EMP_KEY = "task_manager_employees";
 
-const sampleEmployees = [
-  { id: "emp1", name: "James O'Brian" },
-  { id: "emp2", name: "Adam Baker" },
-  { id: "emp3", name: "Priya Sharma" },
+/* starter employees (only used on first-run) */
+const starterEmployees = [
+  { id: "emp-1", name: "James O'Brian" },
+  { id: "emp-2", name: "Adam Baker" },
+  { id: "emp-3", name: "Priya Sharma" },
+  { id: "emp-4", name: "Mina Patel" }
 ];
 
 const el = (s) => document.querySelector(s);
-const els = (s) => document.querySelectorAll(s);
+const els = (s) => Array.from(document.querySelectorAll(s));
 
-function uuid() {
-  return "id-" + Math.random().toString(36).substring(2, 10);
-}
+function uuid(prefix='id') { return prefix + '-' + Math.random().toString(36).slice(2,9); }
 
-function readEmployees() {
-  const data = localStorage.getItem(EMP_KEY);
-  if (!data) {
-    localStorage.setItem(EMP_KEY, JSON.stringify(sampleEmployees));
-    return sampleEmployees;
+/* employees CRUD in localStorage */
+function getEmployees(){
+  const raw = localStorage.getItem(EMP_KEY);
+  if(!raw) {
+    localStorage.setItem(EMP_KEY, JSON.stringify(starterEmployees));
+    return starterEmployees.slice();
   }
-  return JSON.parse(data);
+  try { return JSON.parse(raw); } catch(e) { return starterEmployees.slice(); }
 }
 
-function readTasks() {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+function saveEmployees(list){
+  localStorage.setItem(EMP_KEY, JSON.stringify(list));
 }
 
-function writeTasks(list) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+function addEmployee(name){
+  name = name.trim();
+  if(!name) return null;
+  const list = getEmployees();
+  // avoid duplicates by exact name
+  if(list.find(e => e.name.toLowerCase() === name.toLowerCase())) return null;
+  const newEmp = { id: uuid('emp'), name };
+  list.push(newEmp);
+  saveEmployees(list);
+  populateEmployeeSelects();
+  return newEmp;
 }
 
-function formatDate(iso) {
-  if (!iso) return "-";
-  return new Date(iso).toLocaleDateString();
+/* tasks */
+function getTasks(){ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
+function saveTasks(list){ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
+
+/* helper */
+function formatDate(iso){ if(!iso) return '-'; const d = new Date(iso); if(isNaN(d)) return iso; return d.toLocaleDateString(); }
+function badgeClass(status){
+  if(status === 'Open') return 'badge open';
+  if(status === 'In-progress') return 'badge inprogress';
+  if(status === 'Waiting client') return 'badge waiting';
+  if(status === 'Closed') return 'badge closed';
+  return 'badge';
 }
 
-/* ---------------- UI Rendering ---------------- */
+/* ---------------- UI population ---------------- */
+function populateEmployeeSelects(){
+  const emps = getEmployees();
+  const assignTo = el('#assignTo');
+  const assignedFilter = el('#assignedFilter');
 
-function renderEmployees() {
-  const emps = readEmployees();
-  const assignTo = el("#assignTo");
-  const filter = el("#assignedFilter");
+  assignTo.innerHTML = '';
+  assignedFilter.innerHTML = '<option value="">All assignees</option>';
 
-  assignTo.innerHTML = "";
-  filter.innerHTML = '<option value="">All assignees</option>';
+  emps.forEach(e=>{
+    const opt = document.createElement('option'); opt.value = e.id; opt.textContent = e.name;
+    assignTo.appendChild(opt);
 
-  emps.forEach((e) => {
-    assignTo.innerHTML += `<option value="${e.id}">${e.name}</option>`;
-    filter.innerHTML += `<option value="${e.id}">${e.name}</option>`;
+    const opt2 = opt.cloneNode(true);
+    assignedFilter.appendChild(opt2);
   });
 }
 
-function badge(status) {
-  return `
-    <span class="badge ${
-      status === "Open"
-        ? "open"
-        : status === "Closed"
-        ? "closed"
-        : status === "In-progress"
-        ? "inprogress"
-        : "waiting"
-    }">${status}</span>`;
+/* seed sample tasks first-run (optional) */
+function seedTasksOnce(){
+  const t = getTasks();
+  if(t.length) return;
+  const emps = getEmployees();
+  const now = new Date();
+  const sample = [
+    {title:'Add social media links to web design', assignee:emps[0], deadlineOffset:3, status:'Closed'},
+    {title:'Database not set up correctly', assignee:emps[1], deadlineOffset:4, status:'Open'},
+    {title:'Client newest web design', assignee:emps[0], deadlineOffset:3, status:'Waiting client'},
+    {title:'Design new business card', assignee:emps[1], deadlineOffset:5, status:'In-progress'}
+  ];
+  const tasks = sample.map(s=>{
+    const created = new Date(now.getTime() - Math.random()*5*24*3600*1000);
+    const dl = new Date(created.getTime() + s.deadlineOffset*24*3600*1000);
+    return {
+      id: uuid('task'),
+      title: s.title,
+      details: '',
+      assignedId: s.assignee.id,
+      assignedName: s.assignee.name,
+      createdAt: created.toISOString(),
+      deadline: dl.toISOString(),
+      status: s.status
+    };
+  });
+  saveTasks(tasks);
 }
 
-function renderTasks() {
-  const tasks = readTasks();
-  const q = el("#searchInput").value.toLowerCase();
-  const status = el("#statusFilter").value;
-  const date = el("#dateFilter").value;
-  const assigned = el("#assignedFilter").value;
+/* render tasks table based on filters */
+function renderTasks(){
+  const tasks = getTasks().slice().sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
+  const q = el('#searchInput').value.trim().toLowerCase();
+  const status = el('#statusFilter').value;
+  const date = el('#dateFilter').value;
+  const assigned = el('#assignedFilter').value;
 
-  const filtered = tasks.filter((t) => {
-    if (status && t.status !== status) return false;
-    if (assigned && t.assignedId !== assigned) return false;
-    if (date && t.createdAt.slice(0, 10) !== date) return false;
-
-    const hay = (t.title + " " + t.details + " " + t.assignedName).toLowerCase();
-    if (q && !hay.includes(q)) return false;
-
+  const visible = tasks.filter(t=>{
+    if(status && t.status !== status) return false;
+    if(assigned && t.assignedId !== assigned) return false;
+    if(date){
+      const createdDate = new Date(t.createdAt).toISOString().slice(0,10);
+      if(createdDate !== date) return false;
+    }
+    if(q){
+      const hay = (t.title + ' ' + (t.details||'') + ' ' + t.assignedName).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
     return true;
   });
 
-  el("#countLabel").textContent = filtered.length + " tasks";
+  el('#countLabel').textContent = visible.length + ' tasks';
 
-  el("#tasksBody").innerHTML =
-    filtered
-      .map(
-        (t) => `
+  const html = visible.map(t=>`
     <tr data-id="${t.id}">
-      <td>${t.title}<br><span class="muted">${t.details}</span></td>
+      <td>
+        <div class="title">${t.title}</div>
+        <div class="muted" style="margin-top:6px">${t.details ? (t.details.length>160 ? t.details.slice(0,160)+'…' : t.details) : ''}</div>
+      </td>
       <td>${t.assignedName}</td>
-      <td>${formatDate(t.createdAt)}</td>
-      <td>${formatDate(t.deadline)}</td>
-      <td>${badge(t.status)}</td>
-      <td class="actions">
+      <td class="muted">${formatDate(t.createdAt)}</td>
+      <td class="muted">${formatDate(t.deadline)}</td>
+      <td><span class="${badgeClass(t.status)}">${t.status}</span></td>
+      <td style="text-align:right" class="actions">
         <button data-action="edit">Edit</button>
         <button data-action="delete">Delete</button>
       </td>
     </tr>
-  `
-      )
-      .join("") || `<tr><td colspan="6" class="muted">No tasks found.</td></tr>`;
+  `).join('');
 
-  attachRowEvents();
-}
+  el('#tasksBody').innerHTML = html || `<tr><td colspan="6" class="muted">No tasks found.</td></tr>`;
 
-/* ---------------- CRUD ---------------- */
-
-function attachRowEvents() {
-  document.querySelectorAll(".actions button").forEach((btn) => {
-    btn.onclick = () => {
-      const id = btn.closest("tr").dataset.id;
-      if (btn.dataset.action === "delete") deleteTask(id);
-      else editTask(id);
-    };
+  // attach handlers
+  els('.actions button').forEach(btn=>{
+    btn.addEventListener('click', (ev)=>{
+      const tr = ev.target.closest('tr');
+      const id = tr.dataset.id;
+      const act = ev.target.dataset.action;
+      if(act === 'edit') openEditModal(id);
+      if(act === 'delete'){ if(confirm('Delete this task?')) deleteTask(id) }
+    });
   });
 }
 
-function addTask(data) {
-  const tasks = readTasks();
-  tasks.push(data);
-  writeTasks(tasks);
-  renderTasks();
+/* ---------------- CRUD for tasks ---------------- */
+function addTask(task){
+  const tasks = getTasks(); tasks.push(task); saveTasks(tasks); renderTasks();
+}
+function updateTask(updated){
+  const tasks = getTasks(); const i = tasks.findIndex(t=>t.id === updated.id);
+  if(i===-1) return; tasks[i] = updated; saveTasks(tasks); renderTasks();
+}
+function deleteTask(id){
+  saveTasks(getTasks().filter(t=>t.id !== id)); renderTasks();
 }
 
-function editTask(id) {
-  const tasks = readTasks();
-  const t = tasks.find((x) => x.id === id);
-  if (!t) return;
+/* ---------------- Modal & form handling ---------------- */
+const modalBack = el('#modalBack');
+const addTaskBtn = el('#addTaskBtn');
+const saveTaskBtn = el('#saveTaskBtn');
+const cancelModal = el('#cancelModal');
+const addAssigneeBtn = el('#addAssigneeBtn');
+const newAssigneeInput = el('#newAssignee');
 
-  el("#modalTitle").textContent = "Edit Task";
-  el("#taskTitle").value = t.title;
-  el("#taskDetails").value = t.details;
-  el("#assignTo").value = t.assignedId;
-  el("#deadline").value = t.deadline ? t.deadline.slice(0, 10) : "";
-  el("#statusSelect").value = t.status;
+let editingId = null;
 
-  currentEdit = id;
-  showModal();
-}
+addTaskBtn.addEventListener('click', ()=> openAddModal());
+cancelModal.addEventListener('click', closeModal);
+modalBack.addEventListener('click', (e)=> { if(e.target === modalBack) closeModal(); });
 
-function deleteTask(id) {
-  if (!confirm("Delete this task?")) return;
-  writeTasks(readTasks().filter((t) => t.id !== id));
-  renderTasks();
-}
-
-/* ---------------- Modal ---------------- */
-let currentEdit = null;
-
-function showModal() {
-  el("#modalBack").style.display = "flex";
-}
-
-function closeModal() {
-  el("#modalBack").style.display = "none";
-  currentEdit = null;
-}
-
-el("#addTaskBtn").onclick = () => {
-  currentEdit = null;
-  el("#modalTitle").textContent = "Add Task";
-  el("#taskTitle").value = "";
-  el("#taskDetails").value = "";
-  el("#deadline").value = "";
-  el("#statusSelect").value = "Open";
-  showModal();
-};
-
-el("#cancelModal").onclick = closeModal;
-
-el("#saveTaskBtn").onclick = () => {
-  const title = el("#taskTitle").value.trim();
-  if (!title) return alert("Title required");
-
-  const details = el("#taskDetails").value;
-  const assignedId = el("#assignTo").value;
-  const assignedName = readEmployees().find((e) => e.id === assignedId).name;
-  const deadline = el("#deadline").value
-    ? new Date(el("#deadline").value).toISOString()
-    : "";
-
-  const status = el("#statusSelect").value;
-
-  if (currentEdit) {
-    let tasks = readTasks();
-    let t = tasks.find((x) => x.id === currentEdit);
-    t.title = title;
-    t.details = details;
-    t.assignedId = assignedId;
-    t.assignedName = assignedName;
-    t.deadline = deadline;
-    t.status = status;
-    writeTasks(tasks);
-  } else {
-    addTask({
-      id: uuid(),
-      title,
-      details,
-      assignedId,
-      assignedName,
-      createdAt: new Date().toISOString(),
-      deadline,
-      status,
-    });
-  }
-
-  closeModal();
-  renderTasks();
-};
-
-/* ---------------- Filters ---------------- */
-["#searchInput", "#statusFilter", "#dateFilter", "#assignedFilter"].forEach((id) => {
-  el(id).addEventListener("input", renderTasks);
+addAssigneeBtn.addEventListener('click', ()=>{
+  const name = newAssigneeInput.value.trim();
+  if(!name) return alert('Enter a name to add');
+  const added = addEmployee(name);
+  if(!added) { alert('Name already exists or invalid'); return; }
+  newAssigneeInput.value = '';
+  // select the newly added person
+  el('#assignTo').value = added.id;
 });
 
-/* ---------------- Export CSV ---------------- */
-el("#exportBtn").onclick = () => {
-  const rows = [["Title", "Details", "Assigned", "Created", "Deadline", "Status"]];
-  readTasks().forEach((t) =>
-    rows.push([
-      t.title,
-      t.details,
-      t.assignedName,
-      formatDate(t.createdAt),
-      formatDate(t.deadline),
-      t.status,
-    ])
-  );
+function openAddModal(){
+  editingId = null;
+  el('#modalTitle').textContent = 'Add Task';
+  el('#taskTitle').value = '';
+  el('#taskDetails').value = '';
+  el('#statusSelect').value = 'Open';
+  el('#deadline').value = '';
+  const emps = getEmployees();
+  el('#assignTo').value = emps[0]?.id || '';
+  showModal();
+}
 
-  const csv = rows.map((r) => r.join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
+function openEditModal(id){
+  const t = getTasks().find(x => x.id === id);
+  if(!t) return alert('Task not found');
+  editingId = id;
+  el('#modalTitle').textContent = 'Edit Task';
+  el('#taskTitle').value = t.title;
+  el('#taskDetails').value = t.details || '';
+  el('#statusSelect').value = t.status || 'Open';
+  el('#deadline').value = t.deadline ? (new Date(t.deadline)).toISOString().slice(0,10) : '';
+  el('#assignTo').value = t.assignedId;
+  showModal();
+}
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "tasks.csv";
-  a.click();
-  URL.revokeObjectURL(url);
-};
+function showModal(){ modalBack.style.display = 'flex'; }
+function closeModal(){ modalBack.style.display = 'none'; editingId = null; }
+
+saveTaskBtn.addEventListener('click', ()=>{
+  const title = el('#taskTitle').value.trim();
+  if(!title) return alert('Title is required');
+  const details = el('#taskDetails').value.trim();
+  const assignedId = el('#assignTo').value;
+  const emp = getEmployees().find(e=>e.id === assignedId);
+  const assignedName = emp ? emp.name : '';
+  const deadline = el('#deadline').value ? new Date(el('#deadline').value).toISOString() : '';
+  const status = el('#statusSelect').value || 'Open';
+
+  if(editingId){
+    const task = getTasks().find(t=>t.id === editingId);
+    if(!task) return alert('Task missing');
+    task.title = title; task.details = details; task.assignedId = assignedId; task.assignedName = assignedName;
+    task.deadline = deadline; task.status = status;
+    updateTask(task);
+  } else {
+    const newTask = {
+      id: uuid('task'),
+      title, details,
+      assignedId, assignedName,
+      createdAt: new Date().toISOString(),
+      deadline, status
+    };
+    addTask(newTask);
+  }
+  closeModal();
+});
+
+/* ---------------- Filters & export ---------------- */
+['#searchInput','#statusFilter','#dateFilter','#assignedFilter'].forEach(sel=>{
+  el(sel).addEventListener('input', renderTasks);
+});
+
+el('#exportBtn').addEventListener('click', ()=>{
+  const rows = [['Title','Details','Assigned','Created At','Deadline','Status']];
+  getTasks().forEach(t=>{
+    rows.push([t.title, t.details, t.assignedName, formatDate(t.createdAt), formatDate(t.deadline), t.status]);
+  });
+  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'}); const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'tasks-export.csv'; a.click(); URL.revokeObjectURL(url);
+});
 
 /* ---------------- Init ---------------- */
-renderEmployees();
-renderTasks();
+(function init(){
+  populateEmployeeSelects();
+  seedTasksOnce();
+  renderTasks();
+})();
 
