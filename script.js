@@ -1,6 +1,4 @@
-/* ---------------- script.js — Uploads enabled ----------------
-   Replaces previous script.js. Adds attachments (file uploads and external links).
--------------------------------------------------------------*/
+
 
 (() => {
   const STORAGE_KEY = "task_manager_tasks";
