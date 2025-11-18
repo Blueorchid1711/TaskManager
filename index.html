@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Task Manager</title>
 
+  <!-- Google font (professional + readable) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
   <!-- CSS -->
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -61,28 +64,44 @@
 
 <!-- Modal -->
 <div class="modal-back" id="modalBack">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true">
     <h3 id="modalTitle">Add Task</h3>
 
-    <label>Task Title</label>
-    <input id="taskTitle" type="text">
+    <div class="field">
+      <label for="taskTitle">Task Title</label>
+      <input id="taskTitle" type="text" placeholder="Short description (required)">
+    </div>
 
-    <label>Details</label>
-    <textarea id="taskDetails"></textarea>
+    <div class="field">
+      <label for="taskDetails">Details</label>
+      <textarea id="taskDetails" placeholder="More information (optional)"></textarea>
+    </div>
 
-    <label>Assigned To</label>
-    <select id="assignTo"></select>
+    <div class="row-3">
+      <div class="field">
+        <label for="assignTo">Assigned To</label>
+        <div class="inline-add">
+          <select id="assignTo"></select>
+          <input id="newAssignee" type="text" placeholder="Add name">
+          <button class="btn small" id="addAssigneeBtn" title="Add person">Add</button>
+        </div>
+      </div>
 
-    <label>Deadline</label>
-    <input type="date" id="deadline">
+      <div class="field">
+        <label for="deadline">Deadline</label>
+        <input type="date" id="deadline">
+      </div>
 
-    <label>Status</label>
-    <select id="statusSelect">
-      <option>Open</option>
-      <option>In-progress</option>
-      <option>Waiting client</option>
-      <option>Closed</option>
-    </select>
+      <div class="field">
+        <label for="statusSelect">Status</label>
+        <select id="statusSelect">
+          <option>Open</option>
+          <option>In-progress</option>
+          <option>Waiting client</option>
+          <option>Closed</option>
+        </select>
+      </div>
+    </div>
 
     <div class="modal-actions">
       <button class="btn ghost" id="cancelModal">Cancel</button>
@@ -95,3 +114,4 @@
 <script src="script.js"></script>
 </body>
 </html>
+
