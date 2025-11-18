@@ -2,13 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Task Manager — Uploads</title>
-
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Task Manager — Firebase</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 <div class="wrap">
   <header>
@@ -29,12 +27,10 @@
         <option value="Waiting client">Waiting client</option>
         <option value="Closed">Closed</option>
       </select>
-
       <input type="date" id="dateFilter">
       <select id="assignedFilter">
         <option value="">All assignees</option>
       </select>
-
       <div style="flex: 1;"></div>
       <div class="small muted" id="countLabel">0 tasks</div>
     </div>
@@ -101,7 +97,7 @@
 
     <!-- Uploads section -->
     <div class="field">
-      <label>Attachments (PDF, images, DOCX) — max 2.5MB each</label>
+      <label>Attachments (PDF, images, DOCX) — max 5MB each</label>
       <div class="upload-row">
         <input id="fileInput" type="file" accept=".pdf,image/*,.docx" multiple>
         <div class="link-add">
@@ -120,7 +116,32 @@
   </div>
 </div>
 
-<script src="script.js"></script>
+<!-- Firebase modular SDK (v12) -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
+
+  // ====== YOUR FIREBASE CONFIG (already pasted by you) ======
+  const firebaseConfig = {
+    apiKey: "AIzaSyAeFHwPjA2oS5m7Y5vU7VR8-rE4YOIlSdg",
+    authDomain: "taskmanager-bot.firebaseapp.com",
+    projectId: "taskmanager-bot",
+    storageBucket: "taskmanager-bot.firebasestorage.app",
+    messagingSenderId: "504791278240",
+    appId: "1:504791278240:web:0cdf192e4416e45f27dfc5",
+    measurementId: "G-EF8XPZ8C55"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  try { getAnalytics(app); } catch(e){ /* analytics may fail in Codespaces/localhost */ }
+
+  // Expose initialized app to the module script below via window
+  window.__FIREBASE_APP__ = app;
+</script>
+
+<!-- Your app logic (module) -->
+<script type="module" src="firebase-script.js"></script>
+
 </body>
 </html>
-
