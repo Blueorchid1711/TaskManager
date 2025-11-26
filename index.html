@@ -3,9 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Task Manager — Uploads</title>
+  <title>Task Manager</title>
 
+  <!-- Google font (professional + readable) -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <!-- CSS -->
   <link rel="stylesheet" href="style.css" />
 </head>
 
@@ -22,6 +25,7 @@
   <div class="panel">
     <div class="filters">
       <input type="text" id="searchInput" placeholder="Search tasks or employee..." />
+
       <select id="statusFilter">
         <option value="">All status</option>
         <option value="Open">Open</option>
@@ -31,6 +35,7 @@
       </select>
 
       <input type="date" id="dateFilter">
+
       <select id="assignedFilter">
         <option value="">All assignees</option>
       </select>
@@ -48,7 +53,6 @@
             <th>CREATED AT</th>
             <th>DEADLINE</th>
             <th>STATUS</th>
-            <th>UPLOADS</th>
             <th>ACTIONS</th>
           </tr>
         </thead>
@@ -99,20 +103,6 @@
       </div>
     </div>
 
-    <!-- Uploads section -->
-    <div class="field">
-      <label>Attachments (PDF, images, DOCX) — max 2.5MB each</label>
-      <div class="upload-row">
-        <input id="fileInput" type="file" accept=".pdf,image/*,.docx" multiple>
-        <div class="link-add">
-          <input id="addLinkInput" type="url" placeholder="Paste external link (https://...)" />
-          <input id="addLinkLabel" type="text" placeholder="Label (optional)" />
-          <button class="btn small" id="addLinkBtn">Add link</button>
-        </div>
-      </div>
-      <div id="attachmentsList" class="attachments-list"></div>
-    </div>
-
     <div class="modal-actions">
       <button class="btn ghost" id="cancelModal">Cancel</button>
       <button class="btn" id="saveTaskBtn">Save</button>
@@ -120,6 +110,7 @@
   </div>
 </div>
 
+<!-- JS -->
 <script src="script.js"></script>
 </body>
 </html>
