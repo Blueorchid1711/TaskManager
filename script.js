@@ -8,10 +8,8 @@
   const MAX_FILE_BYTES = 2.5 * 1024 * 1024; // 2.5 MB per file limit
 
   const starterEmployees = [
-    { id: "emp-1", name: "James O'Brian" },
-    { id: "emp-2", name: "Adam Baker" },
-    { id: "emp-3", name: "Priya Sharma" },
-    { id: "emp-4", name: "Mina Patel" }
+    { id: "emp-1", name: "Arya Shinde" },
+    { id: "emp-2", name: "Girisha Anamala" }
   ];
 
   const el = (s) => document.querySelector(s);
